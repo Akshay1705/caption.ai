@@ -67,8 +67,20 @@ export async function POST(req: Request) {
 
     return NextResponse.json(data);
   } catch (err: unknown) {
-    let errorMessage = "An unknown error occurred";
-    if (err instanceof Error) errorMessage = err.message;
+    let errorMessage = "Something went wrong. Please try again later.";
+
+    if (err instanceof Error) {
+      if (err.message.includes("503")) {
+        errorMessage = "The AI service is currently overloaded. Please try again in a few moments.";
+      } else if (err.message.includes("401")) {
+        errorMessage = "Authentication failed. Please check your API key.";
+      } else if (err.message.includes("429")) {
+        errorMessage = "Too many requests. Please wait a bit before trying again.";
+      } else {
+        errorMessage = err.message; // fallback to actual error if not matched
+      }
+    }
+
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

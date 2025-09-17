@@ -190,10 +190,10 @@ export default function Home() {
               {session.user?.image ? (
                 <Image src={session.user.image} alt="avatar" width={36} height={36} className="rounded-full" />
               ) : (
-                <div className="w-9 h-9 rounded-full bg-gray-300 dark:bg-green-700" />
+                <div className="w-9 h-9 rounded-full bg-gray-300 dark:bg-gray-700" />
               )}
               <Button variant="outline" onClick={() => signOut()}
-                className="dark:border-gray-700 dark:text-gray-400 dark:hover:bg-green-800">
+                className="dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">
                 Sign out
               </Button>
             </div>
@@ -218,14 +218,16 @@ export default function Home() {
                   htmlFor="image"
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={handleDrop}
-                  className="flex flex-col items-center justify-center w-full h-48 rounded-lg border-2 border-dashed border-muted-foreground/25 cursor-pointer hover:border-primary hover:bg-muted/5 transition p-4"
+                  className="flex flex-col items-center justify-center w-full aspect-video rounded-lg border-2 border-dashed border-muted-foreground/25 cursor-pointer hover:border-primary hover:bg-muted/5 transition p-4 overflow-hidden"
                 >
                   {image ? (
-                    isDataUrl(image) ? (
-                      <Image src={image} alt="preview" width={240} height={160} className="max-h-40 object-cover rounded" />
-                    ) : (
-                      <Image src={image} alt="preview" width={240} height={160} className="rounded" />
-                    )
+                    <Image
+                      src={image}
+                      alt="preview"
+                      width={700}
+                      height={350}
+                      className="object-cover w-full h-full rounded"
+                    />
                   ) : (
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <Upload className="w-6 h-6" />
@@ -239,61 +241,69 @@ export default function Home() {
 
               {/* Selects grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Style */}
                 <div>
                   <label className="text-sm font-medium block mb-1">Style</label>
-                  <Select onValueChange={(v: string) => setStyle(v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose style" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="short">Short & Sweet</SelectItem>
-                      <SelectItem value="poetic">Poetic</SelectItem>
-                      <SelectItem value="funny">Funny</SelectItem>
-                      <SelectItem value="inspiring">Inspiring</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-wrap gap-2">
+                    {["Poetic", "Funny", "Inspiring"].map((opt) => (
+                      <Button
+                        key={opt}
+                        variant={style === opt ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setStyle(opt)}
+                      >
+                        {opt}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
+                {/* Subject */}
                 <div>
                   <label className="text-sm font-medium block mb-1">Subject</label>
-                  <Select onValueChange={(v: string) => setSubject(v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="e.g. selfie, food, travel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="selfie">Selfie</SelectItem>
-                      <SelectItem value="food">Food</SelectItem>
-                      <SelectItem value="travel">Travel</SelectItem>
-                      <SelectItem value="fashion">Fashion</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-wrap gap-2">
+                    {["Selfie", "Food", "Travel", "Fashion"].map((opt) => (
+                      <Button
+                        key={opt}
+                        variant={subject === opt ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSubject(opt)}
+                      >
+                        {opt}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
+                {/* Occasion */}
                 <div>
                   <label className="text-sm font-medium block mb-1">Occasion</label>
-                  <Select onValueChange={(v: string) => setOccasion(v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="optional" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="birthday">Birthday</SelectItem>
-                      <SelectItem value="party">Party</SelectItem>
-                      <SelectItem value="wedding">Wedding</SelectItem>
-                      <SelectItem value="vacation">Vacation</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-wrap gap-2">
+                    {["Birthday", "Party", "Wedding", "Vacation"].map((opt) => (
+                      <Button
+                        key={opt}
+                        variant={occasion === opt ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setOccasion(opt)}
+                      >
+                        {opt}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
+                {/* Mood */}
                 <div>
                   <label className="text-sm font-medium block mb-1">Mood</label>
-                  <Select onValueChange={(v: string) => setMood(v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="optional" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="happy">Happy</SelectItem>
-                      <SelectItem value="aesthetic">Aesthetic</SelectItem>
-                      <SelectItem value="bold">Bold</SelectItem>
-                      <SelectItem value="romantic">Romantic</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-wrap gap-2">
+                    {["Happy", "Aesthetic", "Bold", "Romantic"].map((opt) => (
+                      <Button
+                        key={opt}
+                        variant={mood === opt ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setMood(opt)}
+                      >
+                        {opt}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -304,12 +314,12 @@ export default function Home() {
               </div>
 
               {/* Generate button + error */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                <Button className="w-full sm:w-auto" onClick={handleGenerate} disabled={loading}>
+              <div className="flex justify-center">
+                <Button className="px-6 border-2" onClick={handleGenerate} disabled={loading}>
                   {loading ? "Generating…" : "✨ Generate"}
                 </Button>
-                {error && <div className="text-sm text-red-500">{error}</div>}
               </div>
+              {error && <div className="text-sm text-red-500 text-center mt-2">{error}</div>}
             </CardContent>
           </Card>
 
