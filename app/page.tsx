@@ -83,6 +83,10 @@ export default function Home() {
 
   // generate (calls your backend /api/generate)
   const handleGenerate = async () => {
+    if (!session) {
+      return signIn("google");
+    }
+
     setLoading(true);
     setError(null);
 
@@ -128,6 +132,7 @@ export default function Home() {
     }
   };
 
+
   // copy helpers with feedback
   const copy = async (text: string, setter: (v: boolean) => void) => {
     try {
@@ -146,24 +151,6 @@ export default function Home() {
 
   if (status === "loading") return <div className="p-8 text-center">Loading…</div>;
 
-  if (!session) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-background">
-        <Card className="w-full max-w-md shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-center">caption.ai</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-center">
-            <p className="text-sm text-muted-foreground">
-              Sign in with Google to generate captions, hashtags, and song picks.
-            </p>
-            <Button onClick={() => signIn("google")}>Sign in with Google</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
@@ -173,17 +160,42 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <ModeToggle />
             <div className="flex items-center gap-3">
-              <span className="hidden sm:block text-sm font-medium">{session.user?.name}</span>
-              {session.user?.image ? (
-                <Image src={session.user.image} alt="avatar" width={36} height={36} className="rounded-full" />
+              {session ? (
+                <>
+                  <span className="hidden sm:block text-sm font-medium">{session.user?.name}</span>
+                  {session.user?.image ? (
+                    <Image
+                      src={session.user.image}
+                      alt="avatar"
+                      width={36}
+                      height={36}
+                      className="rounded-full"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-gray-300 dark:bg-gray-700" />
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => signOut()}
+                    className="dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+                  >
+                    Sign out
+                  </Button>
+                </>
               ) : (
-                <div className="w-9 h-9 rounded-full bg-gray-300 dark:bg-gray-700" />
+                <>
+                  <div className="w-9 h-9 rounded-full bg-gray-300 dark:bg-gray-700" />
+                  <Button
+                    variant="default"
+                    onClick={() => signIn("google")}
+                    className="dark:bg-gray-800 dark:hover:bg-gray-700"
+                  >
+                    Sign in
+                  </Button>
+                </>
               )}
-              <Button variant="outline" onClick={() => signOut()}
-                className="dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800">
-                Sign out
-              </Button>
             </div>
+
           </div>
         </div>
       </header>
