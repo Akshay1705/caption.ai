@@ -223,8 +223,8 @@ export default function Home() {
                     <Image
                       src={image}
                       alt="preview"
-                      width={700}
-                      height={350}
+                      width={500}
+                      height={50}
                       className="object-cover w-full h-full rounded"
                     />
                   ) : (
@@ -388,11 +388,6 @@ export default function Home() {
                     <p className="text-sm line-clamp-2">{post.caption}</p>
                     <p className="text-xs text-muted-foreground mt-1 truncate">{post.hashtags.join(" ")}</p>
                     <p className="text-[11px] text-gray-400 mt-1">{new Date(post.createdAt).toLocaleString()}</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => copyHistory(post)}>
-                        <Copy className="w-4 h-4 mr-1" /> Copy
-                      </Button>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
