@@ -146,9 +146,6 @@ export default function Home() {
 
   const copyAll = () => copy(`${caption}\n\n${hashtags.join(" ")}`, setAllCopied);
 
-  const copyHistory = (post: Post) =>
-    copy(`${post.caption}\n\n${post.hashtags.join(" ")}\n\nSongs: ${post.songs.join(", ")}`, () => {});
-
   if (status === "loading") return <div className="p-8 text-center">Loading…</div>;
 
   return (
