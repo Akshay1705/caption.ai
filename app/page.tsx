@@ -133,7 +133,7 @@ export default function Home() {
   };
 
   if (status === "loading") {
-    return <div className="p-8 text-center">Loading session…</div>;
+    return <div className="p-8 text-center">Loading…</div>;
   }
 
   return (
