@@ -45,8 +45,10 @@ export default function HistoryArea({ history, handleDelete }: HistoryAreaProps)
               </div>
               <div className="flex-1 overflow-hidden">
                 <p className="text-sm line-clamp-2">{post.caption}</p>
-                <p className="text-xs text-muted-foreground mt-1 truncate">{post.hashtags.join(" ")}</p>
-                <p className="text-[11px] text-gray-400 mt-1">{new Date(post.createdAt).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground mt-1 truncate">
+                  {post.hashtags.map((h) => `#${h}`).join(" ")}
+                </p>
+                <p className="text-[11px] text-gray-400 mt-1">{new Date(post.created_at).toLocaleString()}</p>
               </div>
             </CardContent>
           </Card>

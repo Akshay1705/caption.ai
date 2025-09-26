@@ -4,5 +4,5 @@ export type Post = {
   caption: string;
   hashtags: string[];
   songs: string[];
-  createdAt: string;
+  created_at: string;
 };

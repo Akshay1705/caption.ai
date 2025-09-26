@@ -27,7 +27,11 @@ export default function OutputArea({ caption, hashtags, songs, allCopied, result
         </CardHeader>
         <CardContent>
           <p className="mb-3 whitespace-pre-wrap">{caption || "Your caption will appear here after you click Generate."}</p>
-          <div className="text-sm text-muted-foreground">{hashtags.length ? hashtags.join(" ") : "Hashtags will appear here."}</div>
+          <div className="text-sm text-muted-foreground">
+            {hashtags.length > 0
+              ? hashtags.map((h) => `#${h}`).join(" ")
+              : "Hashtags will appear here."}
+          </div>
         </CardContent>
       </Card>
 

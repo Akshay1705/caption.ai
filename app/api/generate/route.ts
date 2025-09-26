@@ -1,86 +1,133 @@
+// app/api/generate/route.ts
+
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { GoogleGenerativeAI, Part } from "@google/generative-ai";
+import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
+function fileToGenerativePart(base64Data: string, mimeType: string) {
+  return {
+    inlineData: {
+      data: base64Data,
+      mimeType,
+    },
+  };
+}
 
 export async function POST(req: Request) {
   try {
-    const { description, style, subject, mood, occasion, image } = await req.json();
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userEmail = session.user.email;
 
+    const body = await req.json();
+    const { image, description, style, subject, occasion, mood } = body;
+
+    // --- ✅ NEW: Add input validation ---
     if (!image) {
       return NextResponse.json(
-        { error: "No image provided" },
-        { status: 400 }
+        { error: "Please upload an image to generate content." },
+        { status: 400 } // 400 means "Bad Request"
       );
     }
+    // --- END of new logic ---
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    // Instruction prompt
-    const prompt = `
-      You are a creative Instagram caption generator.  
+    const systemInstruction = `You are an expert social media manager for platforms like Instagram and TikTok.
+    Your task is to generate a caption, hashtags, and song suggestions for a social media post.
 
-      Step 1: Analyze the uploaded image (scenery, objects, colors, vibe, emotions).  
-      Step 2: Blend that analysis with the user’s preferences below:  
-      - Style: ${style || "None"}  
-      - Subject: ${subject || "None"}  
-      - Mood: ${mood || "None"}  
-      - Occasion: ${occasion || "None"}  
-      - Extra notes: ${description || "None"}  
+    User Preferences:
+    - Style: ${style || 'Not specified'}
+    - Subject: ${subject || 'Not specified'}
+    - Occasion: ${occasion || 'Not-specified'}
+    - Mood: ${mood || 'Not-specified'}
+    - Additional Description: ${description || 'Not specified'}
+    
+    Instructions:
+    1.  Analyze the image and preferences to write an engaging caption.
+    2.  Provide 5-7 relevant hashtags. IMPORTANT: Do NOT include the '#' symbol.
+    3.  Song Suggestion (Crucial): First, deeply analyze the visual elements, mood, and subject of the photo to determine its specific "vibe" or "aesthetic" (e.g., "upbeat summer vacation," "cozy rainy day," "dramatic fashion look," "energetic workout"). Then, suggest 2-3 songs that are a perfect match for that specific vibe. The songs should be popular and fitting for Instagram Reels or TikTok.
+    4.  You MUST respond with only a valid, minified JSON object and nothing else.
+    
+    The JSON structure MUST be:
+    {
+      "caption": "Your generated caption here.",
+      "hashtags": ["hashtagone", "hashtagtow", "hashtagthree"],
+      "songs": ["Song Name 1 - Artist", "Song Name 2 - Artist"]
+    }`;
 
-      Your Task:  
-      1. Generate a short, natural Instagram caption (max 3 sentences). Use emojis only if they fit.  
-      2. Suggest 8–10 hashtags (half image-specific, half vibe/occasion specific).  
-      3. Suggest 2–3 trending/popular songs that match the photo vibe + user mood.  
+    const promptParts: Part[] = [{ text: systemInstruction }];
+    const match = image.match(/^data:(image\/\w+);base64,(.+)$/);
+    if (match) {
+        promptParts.push(fileToGenerativePart(match[2], match[1]));
+    } else {
+        // Handle cases where the image format is invalid, just in case
+        return NextResponse.json({ error: "Invalid image format." }, { status: 400 });
+    }
+    
+    const result = await model.generateContent({ contents: [{ role: "user", parts: promptParts }]});
+    const response = result.response;
+    let content = response.text();
 
-      ⚠️ Rules:  
-      - Do not output explanations or markdown.  
-      - Return only valid JSON in this shape:  
-
-      {
-        "caption": "your caption here",
-        "hashtags": ["#tag1", "#tag2"],
-        "songs": ["Song 1", "Song 2"]
-      }
-    `;
-
-    // Pass text + image as multimodal input
-    const result = await model.generateContent([
-      { text: prompt },
-      {
-        inlineData: {
-          mimeType: "image/png", // or "image/jpeg" depending on upload
-          data: image.replace(/^data:image\/\w+;base64,/, ""), // remove prefix if needed
-        },
-      },
-    ]);
-
-    let text = result.response.text().trim();
-    text = text.replace(/```json|```/g, "").trim(); // clean if Gemini wraps in code fences
-
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      console.error("Parse error, raw text:", text);
-      data = { caption: text, hashtags: [], songs: [] };
+    if (!content) {
+      throw new Error("AI failed to generate content.");
+    }
+    
+    const firstBrace = content.indexOf('{');
+    const lastBrace = content.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      content = content.substring(firstBrace, lastBrace + 1);
     }
 
-    return NextResponse.json(data);
-  } catch (err: unknown) {
-    let errorMessage = "Something went wrong. Please try again later.";
+    const parsedContent = JSON.parse(content);
+    const { caption, hashtags, songs } = parsedContent;
+    
+    const postToInsert = {
+      user_email: userEmail,
+      image: image,
+      caption: caption,
+      hashtags: hashtags,
+      songs: songs,
+    };
 
-    if (err instanceof Error) {
-      if (err.message.includes("503")) {
-        errorMessage = "The AI service is currently overloaded. Please try again in a few moments.";
-      } else if (err.message.includes("401")) {
-        errorMessage = "Authentication failed. Please check your API key.";
-      } else if (err.message.includes("429")) {
-        errorMessage = "Too many requests. Please wait a bit before trying again.";
-      } else {
-        errorMessage = err.message; // fallback to actual error if not matched
-      }
+    const { data: newPost, error: insertError } = await supabase
+      .from("posts")
+      .insert(postToInsert)
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("Supabase insert error:", insertError);
+      throw new Error(insertError.message);
+    }
+    
+    // History Trimming Logic
+    const HISTORY_LIMIT = 5;
+    const { data: userPosts } = await supabase
+        .from('posts')
+        .select('id')
+        .eq('user_email', userEmail)
+        .order('created_at', { ascending: true });
+
+    if (userPosts && userPosts.length > HISTORY_LIMIT) {
+        const idsToDelete = userPosts
+            .slice(0, userPosts.length - HISTORY_LIMIT)
+            .map(p => p.id);
+        await supabase.from('posts').delete().in('id', idsToDelete);
     }
 
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json({ post: newPost });
+
+  } catch (error) {
+    console.error("Generate API error:", error);
+    // This catch block handles the "server error" case
+    const message = error instanceof Error ? error.message : "Internal Server Error. Please try again later.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

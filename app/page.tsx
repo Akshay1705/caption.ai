@@ -1,12 +1,11 @@
-// app/page.tsx
+// app/page.tsx (or pages/index.tsx)
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
-import { Post } from "@/types"; // Import the shared type
+import { Post } from "@/types";
 
-// Import the new components
 import Navbar from "@/components/Navbar";
 import InputArea from "@/components/InputArea";
 import OutputArea from "@/components/OutputArea";
@@ -15,7 +14,7 @@ import HistoryArea from "@/components/HistoryArea";
 export default function Home() {
   const { data: session, status } = useSession();
 
-  // form state
+  // Form state
   const [image, setImage] = useState<string | null>(null);
   const [style, setStyle] = useState<string>("");
   const [subject, setSubject] = useState<string>("");
@@ -23,41 +22,48 @@ export default function Home() {
   const [mood, setMood] = useState<string>("");
   const [desc, setDesc] = useState<string>("");
 
-  // outputs
+  // Output state
   const [caption, setCaption] = useState<string>("");
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [songs, setSongs] = useState<string[]>([]);
 
-  // history (persisted)
-  const [history, setHistory] = useState<Post[]>(() => {
-    try {
-      const raw = typeof window !== "undefined" && localStorage.getItem("ai_history");
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
+  // History state (now fetched from database)
+  const [history, setHistory] = useState<Post[]>([]);
 
-  // UI / copy state
+  // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allCopied, setAllCopied] = useState(false);
 
   const resultRef = useRef<HTMLDivElement | null>(null);
 
-  // keep history persisted
+  // NEW: Fetch history from the database when the user session is available
   useEffect(() => {
-    try {
-      localStorage.setItem("ai_history", JSON.stringify(history));
-    } catch {
-      // ignore
-    }
-  }, [history]);
+    const fetchHistory = async () => {
+      if (session) {
+        setLoading(true);
+        try {
+          const res = await fetch("/api/history");
+          if (res.ok) {
+            const data = await res.json();
+            setHistory(data);
+          } else {
+            console.error("Failed to fetch history");
+          }
+        } catch (err) {
+          console.error("Error fetching history:", err);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    fetchHistory();
+  }, [session]);
 
-  // generate (calls your backend /api/generate)
   const handleGenerate = async () => {
     if (!session) {
-      return signIn("google");
+      signIn("google");
+      return;
     }
 
     setLoading(true);
@@ -75,23 +81,17 @@ export default function Home() {
         throw new Error(data.error || "Failed to generate content");
       }
 
-      setCaption(data.caption || "");
-      setHashtags(Array.isArray(data.hashtags) ? data.hashtags : []);
-      setSongs(Array.isArray(data.songs) ? data.songs : (data.songs ? [data.songs] : []));
+      // Set output states from the new post returned by the API
+      setCaption(data.post.caption || "");
+      setHashtags(data.post.hashtags || []);
+      setSongs(data.post.songs || []);
 
-      const post: Post = {
-        id: Date.now(),
-        image,
-        caption: data.caption || "",
-        hashtags: Array.isArray(data.hashtags) ? data.hashtags : [],
-        songs: Array.isArray(data.songs) ? data.songs : (data.songs ? [data.songs] : []),
-        createdAt: new Date().toISOString(),
-      };
-      setHistory((prev) => [post, ...prev]);
+      // Add the new post to the history for immediate UI feedback
+      setHistory((prev) => [data.post, ...prev]);
 
+      // Scroll to results
       setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth" }), 150);
     } catch (err: unknown) {
-      console.error("generate error", err);
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
@@ -104,20 +104,41 @@ export default function Home() {
       setAllCopied(true);
       setTimeout(() => setAllCopied(false), 1500);
     } catch {
-      // ignore
+      // Ignore copy errors
     }
   };
-  
-  const handleDeleteHistory = (id: number) => {
+
+  const handleDeleteHistory = async (id: number) => {
+    const originalHistory = history;
+    // Optimistically remove from the UI for a snappy user experience
     setHistory((currentHistory) => currentHistory.filter((p) => p.id !== id));
+
+    try {
+      const res = await fetch("/api/history", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+
+      if (!res.ok) {
+        // If the delete fails on the server, revert the UI change
+        setHistory(originalHistory);
+        console.error("Failed to delete post from server.");
+      }
+    } catch (err) {
+      // If there's a network error, also revert the UI change
+      setHistory(originalHistory);
+      console.error("Error deleting post:", err);
+    }
   };
 
-  if (status === "loading") return <div className="p-8 text-center">Loading…</div>;
+  if (status === "loading") {
+    return <div className="p-8 text-center">Loading session…</div>;
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar session={session} />
-
       <main className="mx-auto max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <InputArea
@@ -130,7 +151,6 @@ export default function Home() {
             loading={loading} error={error}
             handleGenerate={handleGenerate}
           />
-
           <OutputArea
             caption={caption}
             hashtags={hashtags}
@@ -140,7 +160,6 @@ export default function Home() {
             copyAll={copyAll}
           />
         </div>
-
         <HistoryArea history={history} handleDelete={handleDeleteHistory} />
       </main>
     </div>
