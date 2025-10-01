@@ -1,12 +1,10 @@
-// app/api/history/route.ts
-
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth"; 
 import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin"; // Use admin client for consistency
 
 // --- GET Request: Fetches all posts for the logged-in user ---
-export async function GET() { // <-- Fix: Removed the unused '_req' parameter
+export async function GET() { 
   try {
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.email) {
@@ -18,7 +16,7 @@ export async function GET() { // <-- Fix: Removed the unused '_req' parameter
       .from("posts")
       .select("*")
       .eq("user_email", userEmail)
-      .order("created_at", { ascending: false }); // <-- Correctly uses createdAt
+      .order("created_at", { ascending: false }); 
 
     if (error) {
       throw new Error(error.message);

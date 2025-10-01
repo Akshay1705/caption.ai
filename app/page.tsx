@@ -1,5 +1,3 @@
-// app/page.tsx (or pages/index.tsx)
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -27,7 +25,7 @@ export default function Home() {
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [songs, setSongs] = useState<string[]>([]);
 
-  // History state (now fetched from database)
+  // History state
   const [history, setHistory] = useState<Post[]>([]);
 
   // UI state
@@ -37,7 +35,7 @@ export default function Home() {
 
   const resultRef = useRef<HTMLDivElement | null>(null);
 
-  // NEW: Fetch history from the database when the user session is available
+  // Fetch history from the database when the user session is available
   useEffect(() => {
     const fetchHistory = async () => {
       if (session) {

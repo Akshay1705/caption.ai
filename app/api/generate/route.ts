@@ -1,8 +1,6 @@
-// app/api/generate/route.ts
-
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth"; 
 import { GoogleGenerativeAI, Part } from "@google/generative-ai";
 import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin";
 
@@ -28,14 +26,14 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { image, description, style, subject, occasion, mood } = body;
 
-    // --- ✅ NEW: Add input validation ---
+    // --- Add input validation ---
     if (!image) {
       return NextResponse.json(
         { error: "Please upload an image to generate content." },
         { status: 400 } // 400 means "Bad Request"
       );
     }
-    // --- END of new logic ---
+    // --- END of logic ---
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
